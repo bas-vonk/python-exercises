@@ -2,12 +2,16 @@ import random
 import timeit
 import heapq
 import copy
+import logging
 
-from sortedcontainers import SortedList
 from scipy.ndimage.filters import gaussian_filter1d
 import matplotlib.pyplot as plt
 
+logger = logging.getLogger()
+
+
 def timer(func):
+    """Time a function. 'runtimes'-list needs to be passed to the function as kwarg."""
 
     def inner(*args, **kwargs):
         start_time = timeit.default_timer()
@@ -19,22 +23,21 @@ def timer(func):
 
 
 class KthLargestElement:
+    """Class to process a stream with integer and return the kth largest element."""
 
     def __init__(self, initial_stream, k):
 
         self.runtimes_stupid = []
         self.runtimes_simple = []
-        self.runtimes_bst = []
         self.runtimes_heap = []
 
-        self.stream = initial_stream
         self.k = k
+
+        # Keep track of the whole stream for the stupid method
+        self.stream = initial_stream
 
         # Create the sorted list for the simple method
         self.k_largest_elements_sorted_list = self._get_k_largest_elements(self.stream)[-self.k:]
-
-        # Create the sorted container for the bst method
-        self.k_largest_elements_bst = SortedList(self.k_largest_elements_sorted_list)
 
         # Create the heap for the heap method
         self.k_largest_elements_heap = copy.deepcopy(self.k_largest_elements_sorted_list)
@@ -71,85 +74,58 @@ class KthLargestElement:
         return self.k_largest_elements_sorted_list[0]
 
     @timer
-    def _add_bst_method(self, number, **kwargs):
-
-        # BETTER SOLUTION
-        # Keep the k biggest items in a BST tree
-
-        if number > self.k_largest_elements_bst[0]:
-            self.k_largest_elements_bst.add(number)
-            self.k_largest_elements_bst.pop(0)
-        return self.k_largest_elements_bst[0]
-
-    @timer
     def _add_heap_method(self, number, **kwargs):
 
         # EFFICIENT SOLUTION
         # Keep the k biggest items in a heap
+        # Processing new number: O(log(k)) - need to smartly update part of the heap data structure
+        # Retrieving kth largest number: O(1) - kth largest element is the root of the heap
         if number > self.k_largest_elements_heap[0]:
             heapq.heappush(self.k_largest_elements_heap, number)
             heapq.heappop(self.k_largest_elements_heap)
         return self.k_largest_elements_heap[0]
 
+    def run_stream(self, number):
+        """Add a number to the stream and get the kth largest number in three different ways."""
 
-    def add(self, number):
-
-        self._add_stupid_method(number, runtimes=self.runtimes_stupid)
-        self._add_simple_method(number, runtimes=self.runtimes_simple)
-        self._add_bst_method(number, runtimes=self.runtimes_bst)
-        self._add_heap_method(number, runtimes=self.runtimes_heap)
+        assert (self._add_stupid_method(number, runtimes=self.runtimes_stupid) ==
+                self._add_simple_method(number, runtimes=self.runtimes_simple) ==
+                self._add_heap_method(number, runtimes=self.runtimes_heap))
 
 
 if __name__ == "__main__":
 
-    sigma = 50
+    # Define the amount of numbers before the stream ends (N), k
+    # and a smoothener for the plots (sigma)
+    N = 100000
+    k = 500
+    sigma = 100
 
-    N = 10000
-    k = 5000
-
+    # Generate an initial stream
     initial_stream = [random.randrange(10) for i in range(k)]
 
+    # Initialize the class
     KthLargestElementObj = KthLargestElement(initial_stream=initial_stream, k=k)
-
-    increment_options = [-1, 0, 1, 1]
 
     for i in range(N):
 
+        # Generate a new number
         last_number = KthLargestElementObj.stream[-1]
-        new_number = last_number + random.choice(increment_options)
+        new_number = last_number + random.choice([-1, 0, 1, 1])
 
-        KthLargestElementObj.add(new_number)
+        # Print progress
+        if i % 1000 == 0:
+            print(f"{i}/{N} ({int(i / N * 100)}%) numbers processed.")
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+        # Add the new number to the stream
+        KthLargestElementObj.run_stream(new_number)
 
-    ax1.plot(gaussian_filter1d(KthLargestElementObj.runtimes_stupid, sigma=sigma), label='Stupid')
-    ax1.plot(gaussian_filter1d(KthLargestElementObj.runtimes_simple, sigma=sigma), label='Simple')
-    ax1.plot(gaussian_filter1d(KthLargestElementObj.runtimes_bst, sigma=sigma), label='BST')
-    ax1.plot(gaussian_filter1d(KthLargestElementObj.runtimes_heap, sigma=sigma), label='Heap')
+    # Plot the results
+    plt.plot(gaussian_filter1d(KthLargestElementObj.runtimes_stupid, sigma=sigma), label='Stupid')
+    plt.plot(gaussian_filter1d(KthLargestElementObj.runtimes_simple, sigma=sigma), label='Simple')
+    plt.plot(gaussian_filter1d(KthLargestElementObj.runtimes_heap, sigma=sigma), label='Heap')
 
-    ax2.plot(gaussian_filter1d(KthLargestElementObj.runtimes_stupid, sigma=sigma), label='Stupid')
-    ax2.plot(gaussian_filter1d(KthLargestElementObj.runtimes_simple, sigma=sigma), label='Simple')
-    ax2.plot(gaussian_filter1d(KthLargestElementObj.runtimes_bst, sigma=sigma), label='BST')
-    ax2.plot(gaussian_filter1d(KthLargestElementObj.runtimes_heap, sigma=sigma), label='Heap')
-
-    ax1.set_ylim(.0003, .0006)  # outliers only
-    ax2.set_ylim(0, .00003)  # most of the data
-
-    ax1.spines['bottom'].set_visible(False)
-    ax2.spines['top'].set_visible(False)
-    ax1.xaxis.tick_top()
-    ax1.tick_params(labeltop=False)  # don't put tick labels at the top
-    ax2.xaxis.tick_bottom()
-
-    d = .015  # how big to make the diagonal lines in axes coordinates
-    # arguments to pass to plot, just so we don't keep repeating them
-    kwargs = dict(transform=ax1.transAxes, color='k', clip_on=False)
-    ax1.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
-    ax1.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
-
-    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-    ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
-    ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+    plt.yscale('log')
 
     plt.legend()
 
