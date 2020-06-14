@@ -93,6 +93,9 @@ class KthLargestElement:
                 self._add_simple_method(number, runtimes=self.runtimes_simple) ==
                 self._add_heap_method(number, runtimes=self.runtimes_heap))
 
+        # A bit ugly, but easiest way to actually return the kth largest element
+        return self.k_largest_elements_sorted_list[0]
+
 
 if __name__ == "__main__":
 
@@ -114,12 +117,13 @@ if __name__ == "__main__":
         last_number = KthLargestElementObj.stream[-1]
         new_number = last_number + random.choice([-1, 0, 1, 1])
 
+        # Add the new number to the stream
+        kth_largest_element = KthLargestElementObj.run_stream(new_number)
+
         # Print progress
         if i % 1000 == 0:
-            print(f"{i}/{N} ({int(i / N * 100)}%) numbers processed.")
-
-        # Add the new number to the stream
-        KthLargestElementObj.run_stream(new_number)
+            print(f"{i}/{N} ({int(i / N * 100)}%) numbers processed. {kth_largest_element} is the"
+                  f"latest kth largest element.")
 
     # Plot the results
     plt.plot(gaussian_filter1d(KthLargestElementObj.runtimes_stupid, sigma=sigma), label='Stupid')
