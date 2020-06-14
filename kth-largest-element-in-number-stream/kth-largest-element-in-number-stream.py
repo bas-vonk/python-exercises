@@ -67,6 +67,7 @@ class KthLargestElement:
         # Processing new number: O(k) - need to resort the list with biggest numbers
         # Retrieving kth largest number: O(1) - kth largest element is the root of the shortlist
 
+        # ASSUMPTION: self.k_largest_elements_sorted_list already contains k items
         if number > self.k_largest_elements_sorted_list[0]:
             self.k_largest_elements_sorted_list.append(number)
             self.k_largest_elements_sorted_list.pop(0)
@@ -81,8 +82,8 @@ class KthLargestElement:
         # Processing new number: O(log(k)) - need to smartly update part of the heap data structure
         # Retrieving kth largest number: O(1) - kth largest element is the root of the heap
         if number > self.k_largest_elements_heap[0]:
-            heapq.heappush(self.k_largest_elements_heap, number)
-            heapq.heappop(self.k_largest_elements_heap)
+            # ASSUMPTION: self.k_largest_elements_heap already contains k items
+            heapq.heappushpop(self.k_largest_elements_heap, number)
         return self.k_largest_elements_heap[0]
 
     def run_stream(self, number):
